@@ -17,7 +17,6 @@ import requests   # used only to catch exceptions
 import socket     # used only to catch exceptions
 from requests_futures.sessions import FuturesSession
 from gi.repository import Gtk, Gio, GLib
-from gi.repository import AppIndicator3 as appindicator
 from xml.dom import minidom
 
 VERSION = 'v0.3.1'
@@ -42,12 +41,13 @@ class Main(object):
         self.args = args
         self.wd = os.path.normpath(os.path.abspath(os.path.split(__file__)[0]))
         self.icon_path = os.path.join(self.wd, 'icons')
-        self.ind = appindicator.Indicator.new_with_path(
-                            'syncthing-indicator',
-                            'syncthing-client-idle',
-                            appindicator.IndicatorCategory.APPLICATION_STATUS,
-                            self.icon_path)
-        self.ind.set_status(appindicator.IndicatorStatus.ACTIVE)
+        if not self.args.text_only:
+            self.ind = appindicator.Indicator.new_with_path(
+                'syncthing-indicator',
+                'syncthing-client-idle',
+                appindicator.IndicatorCategory.APPLICATION_STATUS,
+                self.icon_path)
+            self.ind.set_status(appindicator.IndicatorStatus.ACTIVE)
 
         self.state = {'update_folders': True,
                       'update_devices': True,
@@ -177,7 +177,8 @@ class Main(object):
         self.quit_button.show()
         self.more_submenu.append(self.quit_button)
 
-        self.ind.set_menu(self.menu)
+        if not self.args.text_only:
+	    self.ind.set_menu(self.menu)
 
     def load_config_begin(self):
         ''' Read needed values from config file '''
@@ -358,6 +359,7 @@ class Main(object):
     # processing of the events coming from the event interface
     def process_event(self, event):
         t = event.get('type').lower()
+        #log.debug('received event: '+str(event)) 
         if hasattr(self, 'event_{}'.format(t)):
             log.debug('received event: {} {}'.format(
                 event.get('id'), event.get('type')))
@@ -800,9 +802,10 @@ class Main(object):
         'scanning': {'name': 'syncthing-client-scanning', 'descr': 'Scanning Directories'},
         'cleaning': {'name': 'syncthing-client-scanning', 'descr': 'Cleaning Directories'},
         }
-
-        self.ind.set_attention_icon(icon[self.state['set_icon']]['name'])
-        self.ind.set_icon_full(icon[self.state['set_icon']]['name'],
+	
+        if not self.args.text_only:
+            self.ind.set_attention_icon(icon[self.state['set_icon']]['name'])
+            self.ind.set_icon_full(icon[self.state['set_icon']]['name'],
                                icon[self.state['set_icon']]['descr'])
 
     def leave(self, widget):
@@ -857,6 +860,8 @@ if __name__ == '__main__':
         help='Interval for refreshing GUI, in seconds. Default: %(default)s')
     parser.add_argument('--no-shutdown', action='store_true',
         help='Hide Start, Restart, and Shutdown Syncthing menus')
+    parser.add_argument('--text-only', action='store_true',
+        help='Text only, no icon')
 
     args = parser.parse_args()
     for arg in [args.timeout_event, args.timeout_rest, args.timeout_gui]:
