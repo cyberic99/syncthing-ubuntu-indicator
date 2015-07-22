@@ -178,7 +178,7 @@ class Main(object):
         self.more_submenu.append(self.quit_button)
 
         if not self.args.text_only:
-	    self.ind.set_menu(self.menu)
+            self.ind.set_menu(self.menu)
 
     def load_config_begin(self):
         ''' Read needed values from config file '''
@@ -472,7 +472,7 @@ class Main(object):
         file_details['time'] = event['time']
         file_details['action'] = event['data']['action']
         self.recent_files.insert(0, file_details)
-        self.recent_files = self.recent_files[:20]
+        self.recent_files = self.recent_files[:self.args.nb_recent_files]
         self.state['update_files'] = True
     # end of the event processing dings
 
@@ -862,6 +862,8 @@ if __name__ == '__main__':
         help='Hide Start, Restart, and Shutdown Syncthing menus')
     parser.add_argument('--text-only', action='store_true',
         help='Text only, no icon')
+    parser.add_argument('--nb-recent-files', type=int, default=20, metavar='N',
+        help='Number of recent files entries to keep. Default: %(default)s')
 
     args = parser.parse_args()
     for arg in [args.timeout_event, args.timeout_rest, args.timeout_gui]:
