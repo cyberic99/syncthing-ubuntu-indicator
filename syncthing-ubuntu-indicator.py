@@ -42,6 +42,7 @@ class Main(object):
         self.wd = os.path.normpath(os.path.abspath(os.path.split(__file__)[0]))
         self.icon_path = os.path.join(self.wd, 'icons')
         if not self.args.text_only:
+            from gi.repository import AppIndicator3 as appindicator
             self.ind = appindicator.Indicator.new_with_path(
                 'syncthing-indicator',
                 'syncthing-client-idle',
