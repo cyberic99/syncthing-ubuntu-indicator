@@ -59,6 +59,7 @@ class Main(object):
         self.create_menu()
 
         self.downloading_files = []
+        self.downloading_files_extra = {} # map: file_details -> file_details_extra
         self.recent_files = []
         self.folders = []
         self.devices = []
@@ -373,6 +374,45 @@ class Main(object):
         fn = getattr(self, 'event_{}'.format(t), self.event_unknown_event)(event)
         self.update_last_seen_id(event.get('id', 0))
 
+
+    def event_downloadprogress(self, event):
+        try:
+            e = event['data'].values()
+            e = e[0].keys()[0]
+        except (ValueError, KeyError, IndexError):
+            e = ""
+
+        log.debug(u'download in progress: {}'.format(e))
+        for folder_name in event['data'].keys():
+            for filename in event['data'][folder_name]:
+                file_details = json.dumps({'folder': folder_name,
+                                'file': filename,
+                                'type': 'file',
+                                'direction': 'down'})
+
+                must_be_added = False
+                try:
+                    v = self.downloading_files_extra[file_details]
+                except KeyError:
+                    v = {}
+                    must_be_added = True # not yet present in downloading_files_extra
+
+                file = event["data"][folder_name][filename]
+                if file["bytesTotal"] == 0:
+                    pct = 0.0
+                else:
+                    pct = 100 * file["bytesDone"] / file["bytesTotal"]
+                # TODO: convert bytes to kb, mb etc
+                v["progress"] = " ({}/{}) - {:.2f}%".format(file["bytesDone"], file["bytesTotal"], pct)
+                if must_be_added:
+                    self.downloading_files_extra[file_details] = v
+
+            for elm in self.folders:
+                if elm['id'] == folder_name:
+                        elm['state'] = 'syncing'
+                        #TODO: this is slow!
+        self.state['update_files'] = True
+
     def event_unknown_event(self, event):
         pass
 
@@ -449,6 +489,11 @@ class Main(object):
                         'file': event['data']['item'],
                         'type': event['data']['type'],
                         'direction': 'down'}
+        try:
+            del self.downloading_files_extra[json.dumps(file_details)]
+        except KeyError:
+            pass
+
         if file_details not in self.downloading_files:
             self.downloading_files.append(file_details)
         for elm in self.folders:
@@ -464,6 +509,12 @@ class Main(object):
                         'file': event['data']['item'],
                         'type': event['data']['type'],
                         'direction': 'down'}
+
+        try:
+            del self.downloading_files_extra[json.dumps(file_details)]
+        except KeyError:
+            pass
+
         try:
             self.downloading_files.remove(file_details)
             log.debug('file locally updated: %s' % file_details['file'])
@@ -617,9 +668,14 @@ class Main(object):
             for child in self.current_files_submenu.get_children():
                 self.current_files_submenu.remove(child)
             for f in self.downloading_files:
-                mi = Gtk.MenuItem(u'\u2193 [{}] {}'.format(
+                fj = json.dumps(f)
+                #mi = Gtk.MenuItem(u'\u2193 [{}] {}'.format(
+                #    f['folder'],
+                #    shorten_path(f['file'])))
+                mi = Gtk.MenuItem(u'\u2193 [{}] {}{}'.format(
                     f['folder'],
-                    shorten_path(f['file'])))
+                    shorten_path(f['file']),
+                    self.downloading_files_extra[fj]["progress"] if fj in self.downloading_files_extra and "progress" in self.downloading_files_extra[fj] else ""))
                 self.current_files_submenu.append(mi)
                 mi.connect(
                     'activate',
