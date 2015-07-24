@@ -360,6 +360,9 @@ class Main(object):
 
     # processing of the events coming from the event interface
     def process_event(self, event):
+        if self.args.log_events:
+            log.debug('EVENT: {}: {}'.format(event['type'], json.dumps(event)))
+
         t = event.get('type').lower()
         #log.debug('received event: '+str(event)) 
         if hasattr(self, 'event_{}'.format(t)):
@@ -909,6 +912,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--loglevel',
         choices=['debug', 'info', 'warning', 'error'], default='info')
+    parser.add_argument('--log-events', action='store_true', help='Log every event')
     parser.add_argument('--timeout-event', type=int, default=10, metavar='N',
         help='Interval for polling event interface, in seconds. Default: %(default)s')
     parser.add_argument('--timeout-rest', type=int, default=30, metavar='N',
