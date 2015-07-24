@@ -520,7 +520,12 @@ class Main(object):
 
         try:
             self.downloading_files.remove(file_details)
-            log.debug('file locally updated: %s' % file_details['file'])
+            #action: update, delete, or metadata.
+            #versioning:
+            #For the first hour, the most recent version is kept every 30 seconds.
+            #For the first day, the most recent version is kept every hour.
+            #For the first 30 days, the most recent version is kept every day.
+            log.debug('file locally updated: %s (%s) at %s' % (file_details['file'], event['data']['action'], event['time']))
         except ValueError:
             log.debug('Completed a file we didn\'t know about: {}'.format(
                 event['data']['item']))
